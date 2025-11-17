@@ -1,6 +1,101 @@
-# FastAPI Application
+# FastAPI Hello World Application
 
-A well-structured FastAPI application following system design best practices.
+A minimal FastAPI application with a single endpoint that returns "Hello World".
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.8+
+- pip
+
+### Installation
+
+1. **Clone the repository**
+```bash
+git clone https://github.com/aqsamaharvi/book-of-H.git
+cd book-of-H
+```
+
+2. **Create and activate virtual environment**
+```bash
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# macOS/Linux
+source .venv/bin/activate
+```
+
+3. **Install dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+### Running the Application
+
+```bash
+python main.py
+```
+
+The API will be available at:
+- **API**: http://localhost:8001
+- **Interactive API docs**: http://localhost:8001/docs
+- **Alternative docs**: http://localhost:8001/redoc
+
+## 📡 API Endpoint
+
+| Method | Endpoint | Description | Response |
+|--------|----------|-------------|----------|
+| GET | `/` | Returns Hello World message | `{"message": "Hello World"}` |
+
+## 🧪 Testing
+
+Run tests with pytest:
+
+```bash
+pytest
+```
+
+Or with verbose output:
+
+```bash
+pytest -v
+```
+
+## 📁 Project Structure
+
+```
+book-of-H/
+├── main.py              # FastAPI application
+├── test_main.py         # Unit tests
+├── requirements.txt     # Python dependencies
+├── README.md           # This file
+└── .gitignore          # Git ignore rules
+```
+
+## 🛠️ Development
+
+The application uses:
+- **FastAPI**: Modern, fast web framework
+- **Uvicorn**: ASGI server with auto-reload in development
+- **Pytest**: Testing framework
+
+### Running in Production
+
+For production, use:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+## 📝 License
+
+MIT License
+
+## 👥 Author
+
+aqsamaharvi
 
 ## 🏗️ Architecture
 
