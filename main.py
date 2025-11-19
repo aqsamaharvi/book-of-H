@@ -19,7 +19,7 @@ app = FastAPI(title="Hello World API")
 @app.get("/", tags=["root"])
 async def read_root():
     """Return a simple Hello World message."""
-    return {"message": "Hello World, auto deployed"}
+    return {"message": "Hello World, auto deployed2"}
 
 
 if __name__ == "__main__":
