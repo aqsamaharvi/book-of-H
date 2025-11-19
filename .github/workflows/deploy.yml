@@ -38,9 +38,7 @@ jobs:
           pip install -r requirements.txt
           
           # Restart the FastAPI service
-          sudo systemctl restart fastapi
-
-          python3 main.py
+          sudo systemctl restart fastapi-app
         EOF
         
         rm -f private_key.pem
