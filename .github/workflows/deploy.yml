@@ -39,6 +39,8 @@ jobs:
           
           # Restart the FastAPI service
           sudo systemctl restart fastapi
+
+          python3 main.py
         EOF
         
         rm -f private_key.pem
