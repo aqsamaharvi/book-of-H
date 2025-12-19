@@ -10,6 +10,7 @@ A minimal FastAPI application with a single endpoint that returns "Hello World".
 
 ### Installation
 
+
 1. **Clone the repository**
 ```bash
 git clone https://github.com/aqsamaharvi/book-of-H.git
