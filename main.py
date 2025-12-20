@@ -10,6 +10,7 @@ from models import (
     UserResponse,
     QuestionnaireRequest,
     QuestionnaireResponse,
+    QuestionnaireDataResponse,
     RegistrationSuccessResponse
 )
 from database import get_database, MongoDatabase, db
@@ -164,6 +165,8 @@ async def login(
     )
 
 
+from scoring_config import calculate_score
+
 @app.post(
     "/api/questionnaire/submit",
     response_model=QuestionnaireResponse,
@@ -187,7 +190,7 @@ async def submit_questionnaire(
     - answers: List of answers with question_id, question_text, and selected_options
     
     **Returns:**
-    - 201: Questionnaire saved successfully
+    - 201: Questionnaire saved successfully with score and band
     - 404: User not found
     - 400: Invalid questionnaire data
     """
@@ -203,15 +206,24 @@ async def submit_questionnaire(
         # Convert answers to dict format for storage
         answers_dict = [answer.model_dump() for answer in questionnaire_data.answers]
         
+        # Calculate score
+        score, band, cat_scores = calculate_score(answers_dict)
+        
         # Save questionnaire
         questionnaire = await db.save_questionnaire(
             user_id=questionnaire_data.user_id,
-            answers=answers_dict
+            answers=answers_dict,
+            score=score,
+            band=band,
+            category_scores=cat_scores
         )
         
         return QuestionnaireResponse(
             message="Questionnaire saved successfully",
-            questionnaire_id=questionnaire["id"]
+            questionnaire_id=questionnaire["id"],
+            score=score,
+            band=band,
+            category_scores=cat_scores
         )
     
     except HTTPException:
@@ -225,6 +237,7 @@ async def submit_questionnaire(
 
 @app.get(
     "/api/questionnaire/{user_id}",
+    response_model=QuestionnaireDataResponse,
     responses={
         200: {"description": "Questionnaire retrieved successfully"},
         404: {"model": ErrorResponse, "description": "Questionnaire not found"}
@@ -239,7 +252,7 @@ async def get_questionnaire(
     Get questionnaire responses for a user
     
     **Returns:**
-    - 200: Questionnaire data
+    - 200: Questionnaire data including score and band
     - 404: Questionnaire not found for this user
     """
     questionnaire = await db.get_questionnaire_by_user_id(user_id)
@@ -251,15 +264,16 @@ async def get_questionnaire(
         )
     
     # Convert datetime objects to strings for JSON serialization
-    result = {
-        "id": questionnaire.get("id"),
-        "user_id": questionnaire.get("user_id"),
-        "answers": questionnaire.get("answers"),
-        "created_at": questionnaire.get("created_at").isoformat() if questionnaire.get("created_at") else None,
-        "updated_at": questionnaire.get("updated_at").isoformat() if questionnaire.get("updated_at") else None
-    }
-    
-    return result
+    return QuestionnaireDataResponse(
+        id=questionnaire.get("id"),
+        user_id=questionnaire.get("user_id"),
+        answers=questionnaire.get("answers"),
+        score=questionnaire.get("score", 0),
+        band=questionnaire.get("band", "Beginner"),
+        category_scores=questionnaire.get("category_scores"),
+        created_at=questionnaire.get("created_at").isoformat() if questionnaire.get("created_at") else None,
+        updated_at=questionnaire.get("updated_at").isoformat() if questionnaire.get("updated_at") else None
+    )
 
 
 if __name__ == "__main__":

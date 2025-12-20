@@ -58,7 +58,7 @@ class MongoDatabase:
         count = await self.db.users.count_documents({"email": email})
         return count > 0
     
-    async def save_questionnaire(self, user_id: str, answers: List[dict]) -> dict:
+    async def save_questionnaire(self, user_id: str, answers: List[dict], score: int = 0, band: str = "", category_scores: dict = None) -> dict:
         """Save or update questionnaire for a user"""
         questionnaire_id = str(uuid.uuid4())
         
@@ -72,6 +72,9 @@ class MongoDatabase:
                 {
                     "$set": {
                         "answers": answers,
+                        "score": score,
+                        "band": band,
+                        "category_scores": category_scores,
                         "updated_at": datetime.utcnow()
                     }
                 }
@@ -83,6 +86,9 @@ class MongoDatabase:
                 "id": questionnaire_id,
                 "user_id": user_id,
                 "answers": answers,
+                "score": score,
+                "band": band,
+                "category_scores": category_scores,
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             }
@@ -91,7 +97,10 @@ class MongoDatabase:
         return {
             "id": questionnaire_id,
             "user_id": user_id,
-            "answers": answers
+            "answers": answers,
+            "score": score,
+            "band": band,
+            "category_scores": category_scores
         }
     
     async def get_questionnaire_by_user_id(self, user_id: str) -> Optional[dict]:

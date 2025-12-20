@@ -65,7 +65,7 @@ class ErrorResponse(BaseModel):
 
 class QuestionnaireAnswer(BaseModel):
     """Single questionnaire answer"""
-    question_id: int
+    question_id: str
     question_text: str
     selected_options: List[str]
 
@@ -80,4 +80,19 @@ class QuestionnaireResponse(BaseModel):
     """Response model after saving questionnaire"""
     message: str
     questionnaire_id: str
+    score: Optional[int] = None
+    band: Optional[str] = None
+    category_scores: Optional[Dict[str, int]] = None
+
+
+class QuestionnaireDataResponse(BaseModel):
+    """Full questionnaire data including scores"""
+    id: str
+    user_id: str
+    answers: List[QuestionnaireAnswer]
+    score: int
+    band: str
+    category_scores: Optional[Dict[str, float]] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
