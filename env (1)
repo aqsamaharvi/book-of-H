@@ -1,8 +1,0 @@
-# MongoDB Configuration
-MONGODB_URL=mongodb+srv://aqsamaharvi12:woxhi7-Rovrot-zaqron@book-of-h.f5shlpc.mongodb.net/
-DATABASE_NAME=hgram_db
-
-# JWT Configuration
-JWT_SECRET_KEY=hgram-super-secret-jwt-key-change-in-production-2024
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
