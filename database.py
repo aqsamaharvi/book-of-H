@@ -211,7 +211,7 @@ class MongoDatabase:
         raise Exception("Post not found")
 
     async def get_posts(self, limit: int = 20, user_id: Optional[str] = None) -> List[dict]:
-        """Get latest posts, including saved and liked status if user_id is provided"""
+        """Get latest posts, including saved, liked status and recent comments"""
         cursor = self.db.posts.find().sort("created_at", -1).limit(limit)
         posts = await cursor.to_list(length=limit)
         
@@ -234,7 +234,111 @@ class MongoDatabase:
             if user_id:
                 post["shelf_category"] = saved_map.get(post["id"])
                 post["is_liked"] = post["id"] in liked_set
+            
+            # Fetch 2 most recent comments for each post
+            comments_cursor = self.db.comments.find({"post_id": post["id"]}).sort("created_at", -1).limit(2)
+            recent_comments = await comments_cursor.to_list(length=2)
+            
+            # Get liked comments for this user if logged in
+            liked_comment_ids = set()
+            if user_id:
+                liked_comments_cursor = self.db.comment_likes.find({
+                    "user_id": user_id, 
+                    "post_id": post["id"],
+                    "comment_id": {"$in": [c["id"] for c in recent_comments]}
+                })
+                liked_comment_docs = await liked_comments_cursor.to_list(length=2)
+                liked_comment_ids = {doc["comment_id"] for doc in liked_comment_docs}
+            
+            for c in recent_comments:
+                c["_id"] = str(c["_id"])
+                c["is_liked"] = c["id"] in liked_comment_ids
+                if "likes" not in c:
+                    c["likes"] = 0
+            post["recent_comments"] = recent_comments
+            
         return posts
+
+    async def create_comment(self, user_id: str, post_id: str, content: str) -> dict:
+        """Create a new comment on a post"""
+        user = await self.get_user_by_id(user_id)
+        if not user:
+            raise Exception("User not found")
+            
+        comment_id = str(uuid.uuid4())
+        comment_doc = {
+            "id": comment_id,
+            "post_id": post_id,
+            "author_id": user_id,
+            "author_name": user.get("name", "User"),
+            "author_avatar": "person.circle.fill",
+            "content": content,
+            "likes": 0,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        await self.db.comments.insert_one(comment_doc)
+        # Increment comment count on post
+        await self.db.posts.update_one({"id": post_id}, {"$inc": {"comments": 1}})
+        
+        comment_doc["_id"] = str(comment_doc["_id"])
+        comment_doc["is_liked"] = False
+        return comment_doc
+
+    async def get_comments(self, post_id: str, limit: int = 50, user_id: Optional[str] = None) -> List[dict]:
+        """Get comments for a post, with liked status if user_id is provided"""
+        cursor = self.db.comments.find({"post_id": post_id}).sort("created_at", -1).limit(limit)
+        comments = await cursor.to_list(length=limit)
+        
+        liked_comment_ids = set()
+        if user_id:
+            liked_cursor = self.db.comment_likes.find({"user_id": user_id, "post_id": post_id})
+            liked_docs = await liked_cursor.to_list(length=limit)
+            liked_comment_ids = {doc["comment_id"] for doc in liked_docs}
+            
+        for comment in comments:
+            comment["_id"] = str(comment["_id"])
+            comment["is_liked"] = comment["id"] in liked_comment_ids
+            if "likes" not in comment:
+                comment["likes"] = 0
+        return comments
+
+    async def like_comment(self, user_id: str, comment_id: str) -> dict:
+        """Like or unlike a comment"""
+        # Find the comment first
+        comment = await self.db.comments.find_one({"id": comment_id})
+        if not comment:
+            raise Exception("Comment not found")
+            
+        post_id = comment["post_id"]
+        
+        # Check if already liked
+        existing = await self.db.comment_likes.find_one({"user_id": user_id, "comment_id": comment_id})
+        
+        if existing:
+            # Already liked -> Unlike
+            await self.db.comment_likes.delete_one({"user_id": user_id, "comment_id": comment_id})
+            await self.db.comments.update_one(
+                {"id": comment_id, "likes": {"$gt": 0}}, 
+                {"$inc": {"likes": -1}}
+            )
+            is_liked = False
+        else:
+            # Not liked yet -> Like
+            await self.db.comment_likes.insert_one({
+                "user_id": user_id,
+                "comment_id": comment_id,
+                "post_id": post_id,
+                "created_at": datetime.utcnow().isoformat()
+            })
+            await self.db.comments.update_one({"id": comment_id}, {"$inc": {"likes": 1}})
+            is_liked = True
+            
+        # Fetch updated comment
+        comment = await self.db.comments.find_one({"id": comment_id})
+        comment["_id"] = str(comment["_id"])
+        comment["is_liked"] = is_liked
+        return comment
 
     async def get_user_posts(self, user_id: str) -> List[dict]:
         """Get posts by user ID"""

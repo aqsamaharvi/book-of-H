@@ -92,6 +92,17 @@ class PostCreateRequest(BaseModel):
     category: Optional[str] = "Discussion"
 
 
+class CommentResponse(BaseModel):
+    id: str
+    post_id: str
+    author_id: str
+    author_name: str
+    author_avatar: str
+    content: str
+    likes: int = 0
+    is_liked: bool = False
+    created_at: str
+
 class PostResponse(BaseModel):
     id: str
     author_id: str
@@ -106,6 +117,10 @@ class PostResponse(BaseModel):
     is_following: bool = False
     is_liked: bool = False
     shelf_category: Optional[str] = None
+    recent_comments: List[CommentResponse] = []
+
+class CommentCreateRequest(BaseModel):
+    content: str
 
 
 class QuestionnaireAnswer(BaseModel):

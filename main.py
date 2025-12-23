@@ -16,7 +16,9 @@ from models import (
     ProfileUpdateRequest,
     UsernameCheckResponse,
     PostCreateRequest,
-    PostResponse as APIPostResponse
+    PostResponse as APIPostResponse,
+    CommentResponse,
+    CommentCreateRequest
 )
 from database import get_database, MongoDatabase, db
 from auth import hash_password, verify_password, create_access_token
@@ -307,6 +309,16 @@ async def get_current_user_id(token: Optional[str] = Depends(oauth2_scheme)) -> 
         )
     return payload.get("user_id")
 
+async def get_optional_user_id(token: Optional[str] = Depends(oauth2_scheme)) -> Optional[str]:
+    """Helper to get user_id from token if present, but doesn't fail if not"""
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        return payload.get("user_id") if payload else None
+    except:
+        return None
+
 @app.get(
     "/api/user/profile",
     response_model=UserResponse,
@@ -378,6 +390,49 @@ async def like_post(
             detail=str(e)
         )
 
+@app.post("/api/posts/{post_id}/comments", response_model=CommentResponse, tags=["Posts"])
+async def create_comment(
+    post_id: str,
+    comment_data: CommentCreateRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: MongoDatabase = Depends(get_database)
+):
+    """Create a new comment on a post"""
+    try:
+        comment = await db.create_comment(user_id, post_id, comment_data.content)
+        return comment
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@app.get("/api/posts/{post_id}/comments", response_model=List[CommentResponse], tags=["Posts"])
+async def get_comments(
+    post_id: str,
+    user_id: Optional[str] = Depends(get_optional_user_id),
+    db: MongoDatabase = Depends(get_database)
+):
+    """Get all comments for a post, with liked status if logged in"""
+    comments = await db.get_comments(post_id, user_id=user_id)
+    return comments
+
+@app.post("/api/comments/{comment_id}/like", response_model=CommentResponse, tags=["Posts"])
+async def like_comment(
+    comment_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: MongoDatabase = Depends(get_database)
+):
+    """Like or unlike a comment"""
+    try:
+        comment = await db.like_comment(user_id, comment_id)
+        return comment
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
 # MARK: - Posts Endpoints
 @app.post(
     "/api/posts",
@@ -404,16 +459,6 @@ async def create_post(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
-
-async def get_optional_user_id(token: Optional[str] = Depends(oauth2_scheme)) -> Optional[str]:
-    """Helper to get user_id from token if present, but doesn't fail if not"""
-    if not token:
-        return None
-    try:
-        payload = decode_access_token(token)
-        return payload.get("user_id") if payload else None
-    except:
-        return None
 
 @app.get(
     "/api/posts",
