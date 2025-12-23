@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
+from typing import List
 from models import (
     UserRegisterRequest,
     UserLoginRequest,
@@ -11,7 +12,11 @@ from models import (
     QuestionnaireRequest,
     QuestionnaireResponse,
     QuestionnaireDataResponse,
-    RegistrationSuccessResponse
+    RegistrationSuccessResponse,
+    ProfileUpdateRequest,
+    UsernameCheckResponse,
+    PostCreateRequest,
+    PostResponse as APIPostResponse
 )
 from database import get_database, MongoDatabase, db
 from auth import hash_password, verify_password, create_access_token
@@ -94,7 +99,12 @@ async def register(
         hashed_password = hash_password(user_data.password)
         
         # Create user in database
-        user = await db.create_user(email=user_data.email, hashed_password=hashed_password)
+        user = await db.create_user(
+            email=user_data.email, 
+            hashed_password=hashed_password,
+            first_name=user_data.first_name,
+            last_name=user_data.last_name
+        )
         
         return RegistrationSuccessResponse(
             message="Account created successfully",
@@ -275,6 +285,159 @@ async def get_questionnaire(
         updated_at=questionnaire.get("updated_at").isoformat() if questionnaire.get("updated_at") else None
     )
 
+
+from fastapi.security import OAuth2PasswordBearer
+from auth import decode_access_token
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+
+async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return payload.get("user_id")
+
+@app.get(
+    "/api/user/profile",
+    response_model=UserResponse,
+    tags=["User"]
+)
+async def get_user_profile(
+    user_id: str = Depends(get_current_user_id),
+    db: MongoDatabase = Depends(get_database)
+):
+    """Get current user's profile"""
+    user = await db.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Fetch questionnaire data to get latest score and band
+    questionnaire = await db.get_questionnaire_by_user_id(user_id)
+    if questionnaire:
+        user["score"] = questionnaire.get("score", 0)
+        user["band"] = questionnaire.get("band", "Beginner")
+    else:
+        user["score"] = 0
+        user["band"] = "Beginner"
+        
+    return user
+
+@app.get("/api/user/saved-posts", tags=["User"])
+async def get_user_saved_posts(user_id: str = Depends(get_current_user_id)):
+    """Get current user's saved posts (Mocked)"""
+    return []
+
+# MARK: - Posts Endpoints
+@app.post(
+    "/api/posts",
+    response_model=APIPostResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Posts"]
+)
+async def create_post(
+    post_data: PostCreateRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: MongoDatabase = Depends(get_database)
+):
+    """Create a new post"""
+    try:
+        post = await db.create_post(
+            user_id=user_id,
+            content=post_data.content,
+            image=post_data.image,
+            category=post_data.category
+        )
+        return post
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@app.get(
+    "/api/posts",
+    response_model=List[APIPostResponse],
+    tags=["Posts"]
+)
+async def get_all_posts(
+    db: MongoDatabase = Depends(get_database)
+):
+    """Get all posts for the feed"""
+    posts = await db.get_posts()
+    return posts
+
+@app.get("/api/user/posts", tags=["User"])
+async def get_user_posts(
+    user_id: str = Depends(get_current_user_id),
+    db: MongoDatabase = Depends(get_database)
+):
+    """Get current user's posts from database"""
+    posts = await db.get_user_posts(user_id)
+    return posts
+
+@app.post(
+    "/api/user/profile/update",
+    response_model=UserResponse,
+    tags=["User"]
+)
+async def update_profile(
+    update_data: ProfileUpdateRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: MongoDatabase = Depends(get_database)
+):
+    """Update current user's profile"""
+    # Check if username is being changed and if it's unique
+    if update_data.username:
+        if await db.username_exists(update_data.username, exclude_user_id=user_id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Username already taken"
+            )
+    
+    # Remove None values from update dict
+    update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    
+    if not update_dict:
+        # If nothing to update, just return the profile
+        return await get_user_profile(user_id, db)
+    
+    user = await db.update_user(user_id, update_dict)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    return user
+
+@app.get(
+    "/api/user/username-check/{username}",
+    response_model=UsernameCheckResponse,
+    tags=["User"]
+)
+async def check_username(
+    username: str,
+    user_id: str = Depends(get_current_user_id),
+    db: MongoDatabase = Depends(get_database)
+):
+    """Check if a username is unique"""
+    is_taken = await db.username_exists(username, exclude_user_id=user_id)
+    if is_taken:
+        return UsernameCheckResponse(
+            is_available=False,
+            message="Username is already taken"
+        )
+    else:
+        return UsernameCheckResponse(
+            is_available=True,
+            message="Username is available"
+        )
 
 if __name__ == "__main__":
     import uvicorn

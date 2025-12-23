@@ -30,18 +30,42 @@ class MongoDatabase:
             self.client.close()
             print("Disconnected from MongoDB")
     
-    async def create_user(self, email: str, hashed_password: str) -> dict:
+    async def create_user(self, email: str, hashed_password: str, first_name: str, last_name: str) -> dict:
         """Create a new user"""
         user_id = str(uuid.uuid4())
+        
+        # Generate unique username
+        base_username = f"{first_name.lower()}{last_name.lower()}".replace(" ", "")
+        username = base_username
+        counter = 1
+        while await self.username_exists(username):
+            username = f"{base_username}{counter}"
+            counter += 1
+            
         user_doc = {
             "id": user_id,
             "email": email,
             "hashed_password": hashed_password,
+            "name": f"{first_name} {last_name}",
+            "username": username,
+            "bio": "Welcome to hGram!",
+            "location": "",
+            "posts_count": 0,
+            "followers_count": 0,
+            "following_count": 0,
             "created_at": datetime.utcnow()
         }
         
         await self.db.users.insert_one(user_doc)
         return user_doc
+
+    async def update_user(self, user_id: str, update_data: dict) -> Optional[dict]:
+        """Update user profile"""
+        await self.db.users.update_one(
+            {"id": user_id},
+            {"$set": update_data}
+        )
+        return await self.get_user_by_id(user_id)
     
     async def get_user_by_email(self, email: str) -> Optional[dict]:
         """Get user by email"""
@@ -56,6 +80,14 @@ class MongoDatabase:
     async def user_exists(self, email: str) -> bool:
         """Check if user exists"""
         count = await self.db.users.count_documents({"email": email})
+        return count > 0
+
+    async def username_exists(self, username: str, exclude_user_id: Optional[str] = None) -> bool:
+        """Check if username already exists"""
+        query = {"username": username}
+        if exclude_user_id:
+            query["id"] = {"$ne": exclude_user_id}
+        count = await self.db.users.count_documents(query)
         return count > 0
     
     async def save_questionnaire(self, user_id: str, answers: List[dict], score: int = 0, band: str = "", category_scores: dict = None) -> dict:
@@ -112,6 +144,43 @@ class MongoDatabase:
         """Clear all users and questionnaires (for testing only)"""
         await self.db.users.delete_many({})
         await self.db.questionnaires.delete_many({})
+        await self.db.posts.delete_many({})
+
+    # MARK: - Posts
+    async def create_post(self, user_id: str, content: str, image: Optional[str] = None, category: str = "Discussion") -> dict:
+        """Create a new post"""
+        user = await self.get_user_by_id(user_id)
+        if not user:
+            raise Exception("User not found")
+            
+        post_id = str(uuid.uuid4())
+        post_doc = {
+            "id": post_id,
+            "author_id": user_id,
+            "author_name": user.get("name", "User"),
+            "author_avatar": "person.circle.fill",
+            "content": content,
+            "image": image,
+            "category": category,
+            "likes": 0,
+            "comments": 0,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        await self.db.posts.insert_one(post_doc)
+        return post_doc
+
+    async def get_posts(self, limit: int = 20) -> List[dict]:
+        """Get latest posts"""
+        cursor = self.db.posts.find().sort("created_at", -1).limit(limit)
+        posts = await cursor.to_list(length=limit)
+        return posts
+
+    async def get_user_posts(self, user_id: str) -> List[dict]:
+        """Get posts by user ID"""
+        cursor = self.db.posts.find({"author_id": user_id}).sort("created_at", -1)
+        posts = await cursor.to_list(length=100)
+        return posts
 
 
 # Global database instance

@@ -6,6 +6,8 @@ import re
 class UserRegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
+    first_name: str
+    last_name: str
     
     @field_validator('password')
     @classmethod
@@ -40,6 +42,15 @@ class UserLoginRequest(BaseModel):
 class UserResponse(BaseModel):
     email: str
     id: str
+    name: Optional[str] = "New User"
+    username: Optional[str] = "user"
+    bio: Optional[str] = ""
+    location: Optional[str] = ""
+    posts_count: int = 0
+    followers_count: int = 0
+    following_count: int = 0
+    score: Optional[int] = 0
+    band: Optional[str] = "Beginner"
 
 
 class TokenResponse(BaseModel):
@@ -61,6 +72,38 @@ class RegistrationSuccessResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    username: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+
+
+class UsernameCheckResponse(BaseModel):
+    is_available: bool
+    message: str
+
+
+class PostCreateRequest(BaseModel):
+    content: str
+    image: Optional[str] = None
+    category: Optional[str] = "Discussion"
+
+
+class PostResponse(BaseModel):
+    id: str
+    author_id: str
+    author_name: str
+    author_avatar: str
+    content: str
+    image: Optional[str] = None
+    category: str
+    likes: int = 0
+    comments: int = 0
+    created_at: str
+    is_following: bool = False
 
 
 class QuestionnaireAnswer(BaseModel):
