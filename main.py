@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
-from typing import List, Dict
+from typing import List, Dict, Optional
 from models import (
     UserRegisterRequest,
     UserLoginRequest,
@@ -289,9 +289,15 @@ async def get_questionnaire(
 from fastapi.security import OAuth2PasswordBearer
 from auth import decode_access_token
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
 
-async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
+async def get_current_user_id(token: Optional[str] = Depends(oauth2_scheme)) -> str:
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     payload = decode_access_token(token)
     if not payload:
         raise HTTPException(
@@ -383,16 +389,27 @@ async def create_post(
             detail=str(e)
         )
 
+async def get_optional_user_id(token: Optional[str] = Depends(oauth2_scheme)) -> Optional[str]:
+    """Helper to get user_id from token if present, but doesn't fail if not"""
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        return payload.get("user_id") if payload else None
+    except:
+        return None
+
 @app.get(
     "/api/posts",
     response_model=List[APIPostResponse],
     tags=["Posts"]
 )
 async def get_all_posts(
+    user_id: Optional[str] = Depends(get_optional_user_id),
     db: MongoDatabase = Depends(get_database)
 ):
-    """Get all posts for the feed"""
-    posts = await db.get_posts()
+    """Get all posts for the feed, with saved status if logged in"""
+    posts = await db.get_posts(user_id=user_id)
     return posts
 
 @app.get("/api/user/posts", tags=["User"])

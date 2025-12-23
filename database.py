@@ -178,12 +178,22 @@ class MongoDatabase:
         post_doc["_id"] = str(post_doc["_id"])
         return post_doc
 
-    async def get_posts(self, limit: int = 20) -> List[dict]:
-        """Get latest posts"""
+    async def get_posts(self, limit: int = 20, user_id: Optional[str] = None) -> List[dict]:
+        """Get latest posts, including saved status if user_id is provided"""
         cursor = self.db.posts.find().sort("created_at", -1).limit(limit)
         posts = await cursor.to_list(length=limit)
+        
+        # If user is logged in, fetch their saved posts to populate shelf_category
+        saved_map = {}
+        if user_id:
+            saved_cursor = self.db.saved_posts.find({"user_id": user_id})
+            saved_docs = await saved_cursor.to_list(length=100)
+            saved_map = {doc["post_id"]: doc["shelf_category"] for doc in saved_docs}
+            
         for post in posts:
             post["_id"] = str(post["_id"])
+            if user_id:
+                post["shelf_category"] = saved_map.get(post["id"])
         return posts
 
     async def get_user_posts(self, user_id: str) -> List[dict]:
@@ -196,7 +206,22 @@ class MongoDatabase:
 
     # MARK: - Shelves/Saved Posts
     async def save_post_to_shelf(self, user_id: str, post_id: str, category: str) -> dict:
-        """Save a post to a user's shelf or update category if already saved"""
+        """Save a post to a user's shelf or update category if already saved.
+        If the same category is selected again, the post is unsaved."""
+        
+        # Check if already saved in this category
+        existing = await self.db.saved_posts.find_one({"user_id": user_id, "post_id": post_id})
+        
+        if existing and existing.get("shelf_category") == category:
+            # Same category clicked -> Unsave
+            await self.db.saved_posts.delete_one({"user_id": user_id, "post_id": post_id})
+            post = await self.db.posts.find_one({"id": post_id})
+            if post:
+                post["_id"] = str(post["_id"])
+                post["shelf_category"] = None
+                return post
+            raise Exception("Post not found")
+            
         update_doc = {
             "user_id": user_id,
             "post_id": post_id,
@@ -220,17 +245,24 @@ class MongoDatabase:
         raise Exception("Post not found")
 
     async def get_saved_posts(self, user_id: str) -> List[dict]:
-        """Get all saved posts for a user"""
+        """Get all saved posts for a user, ensuring uniqueness by post_id"""
         cursor = self.db.saved_posts.find({"user_id": user_id}).sort("saved_at", -1)
         saved_docs = await cursor.to_list(length=100)
         
         posts = []
+        seen_post_ids = set()
+        
         for doc in saved_docs:
-            post = await self.db.posts.find_one({"id": doc["post_id"]})
+            pid = doc["post_id"]
+            if pid in seen_post_ids:
+                continue
+                
+            post = await self.db.posts.find_one({"id": pid})
             if post:
                 post["_id"] = str(post["_id"])
                 post["shelf_category"] = doc["shelf_category"]
                 posts.append(post)
+                seen_post_ids.add(pid)
         return posts
 
 
