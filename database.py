@@ -57,6 +57,7 @@ class MongoDatabase:
         }
         
         await self.db.users.insert_one(user_doc)
+        user_doc["_id"] = str(user_doc["_id"])
         return user_doc
 
     async def update_user(self, user_id: str, update_data: dict) -> Optional[dict]:
@@ -70,11 +71,15 @@ class MongoDatabase:
     async def get_user_by_email(self, email: str) -> Optional[dict]:
         """Get user by email"""
         user = await self.db.users.find_one({"email": email})
+        if user:
+            user["_id"] = str(user["_id"])
         return user
     
     async def get_user_by_id(self, user_id: str) -> Optional[dict]:
         """Get user by ID"""
         user = await self.db.users.find_one({"id": user_id})
+        if user:
+            user["_id"] = str(user["_id"])
         return user
     
     async def user_exists(self, email: str) -> bool:
@@ -138,6 +143,8 @@ class MongoDatabase:
     async def get_questionnaire_by_user_id(self, user_id: str) -> Optional[dict]:
         """Get questionnaire by user ID"""
         questionnaire = await self.db.questionnaires.find_one({"user_id": user_id})
+        if questionnaire:
+            questionnaire["_id"] = str(questionnaire["_id"])
         return questionnaire
     
     async def clear_all(self):
@@ -168,18 +175,62 @@ class MongoDatabase:
         }
         
         await self.db.posts.insert_one(post_doc)
+        post_doc["_id"] = str(post_doc["_id"])
         return post_doc
 
     async def get_posts(self, limit: int = 20) -> List[dict]:
         """Get latest posts"""
         cursor = self.db.posts.find().sort("created_at", -1).limit(limit)
         posts = await cursor.to_list(length=limit)
+        for post in posts:
+            post["_id"] = str(post["_id"])
         return posts
 
     async def get_user_posts(self, user_id: str) -> List[dict]:
         """Get posts by user ID"""
         cursor = self.db.posts.find({"author_id": user_id}).sort("created_at", -1)
         posts = await cursor.to_list(length=100)
+        for post in posts:
+            post["_id"] = str(post["_id"])
+        return posts
+
+    # MARK: - Shelves/Saved Posts
+    async def save_post_to_shelf(self, user_id: str, post_id: str, category: str) -> dict:
+        """Save a post to a user's shelf or update category if already saved"""
+        update_doc = {
+            "user_id": user_id,
+            "post_id": post_id,
+            "shelf_category": category,
+            "saved_at": datetime.utcnow().isoformat()
+        }
+        
+        # Use upsert to update if exists, or insert if new
+        await self.db.saved_posts.update_one(
+            {"user_id": user_id, "post_id": post_id},
+            {"$set": update_doc},
+            upsert=True
+        )
+        
+        # Return the post with the shelf category added
+        post = await self.db.posts.find_one({"id": post_id})
+        if post:
+            post["_id"] = str(post["_id"])
+            post["shelf_category"] = category
+            return post
+        raise Exception("Post not found")
+
+    async def get_saved_posts(self, user_id: str) -> List[dict]:
+        """Get all saved posts for a user"""
+        cursor = self.db.saved_posts.find({"user_id": user_id}).sort("saved_at", -1)
+        saved_docs = await cursor.to_list(length=100)
+        
+        posts = []
+        for doc in saved_docs:
+            post = await self.db.posts.find_one({"id": doc["post_id"]})
+            if post:
+                post["_id"] = str(post["_id"])
+                post["shelf_category"] = doc["shelf_category"]
+                posts.append(post)
         return posts
 
 

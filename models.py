@@ -104,6 +104,7 @@ class PostResponse(BaseModel):
     comments: int = 0
     created_at: str
     is_following: bool = False
+    shelf_category: Optional[str] = None
 
 
 class QuestionnaireAnswer(BaseModel):

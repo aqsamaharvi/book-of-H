@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
-from typing import List
+from typing import List, Dict
 from models import (
     UserRegisterRequest,
     UserLoginRequest,
@@ -330,9 +330,31 @@ async def get_user_profile(
     return user
 
 @app.get("/api/user/saved-posts", tags=["User"])
-async def get_user_saved_posts(user_id: str = Depends(get_current_user_id)):
-    """Get current user's saved posts (Mocked)"""
-    return []
+async def get_user_saved_posts(
+    user_id: str = Depends(get_current_user_id),
+    db: MongoDatabase = Depends(get_database)
+):
+    """Get current user's saved posts from database"""
+    posts = await db.get_saved_posts(user_id)
+    return posts
+
+@app.post("/api/posts/{post_id}/save", tags=["Posts"])
+async def save_post_to_shelf(
+    post_id: str,
+    shelf_data: Dict[str, str],
+    user_id: str = Depends(get_current_user_id),
+    db: MongoDatabase = Depends(get_database)
+):
+    """Save a post to a specific shelf category (Have, Had, Want)"""
+    category = shelf_data.get("shelf_category", "Want")
+    try:
+        post = await db.save_post_to_shelf(user_id, post_id, category)
+        return post
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 # MARK: - Posts Endpoints
 @app.post(
