@@ -178,22 +178,62 @@ class MongoDatabase:
         post_doc["_id"] = str(post_doc["_id"])
         return post_doc
 
+    async def like_post(self, user_id: str, post_id: str) -> dict:
+        """Like or unlike a post"""
+        # Check if already liked
+        existing = await self.db.likes.find_one({"user_id": user_id, "post_id": post_id})
+        
+        if existing:
+            # Already liked -> Unlike
+            await self.db.likes.delete_one({"user_id": user_id, "post_id": post_id})
+            # Prevent likes from going below 0
+            await self.db.posts.update_one(
+                {"id": post_id, "likes": {"$gt": 0}}, 
+                {"$inc": {"likes": -1}}
+            )
+            is_liked = False
+        else:
+            # Not liked yet -> Like
+            await self.db.likes.insert_one({
+                "user_id": user_id,
+                "post_id": post_id,
+                "created_at": datetime.utcnow().isoformat()
+            })
+            await self.db.posts.update_one({"id": post_id}, {"$inc": {"likes": 1}})
+            is_liked = True
+            
+        # Always fetch the latest post data to return the actual count
+        post = await self.db.posts.find_one({"id": post_id})
+        if post:
+            post["_id"] = str(post["_id"])
+            post["is_liked"] = is_liked
+            return post
+        raise Exception("Post not found")
+
     async def get_posts(self, limit: int = 20, user_id: Optional[str] = None) -> List[dict]:
-        """Get latest posts, including saved status if user_id is provided"""
+        """Get latest posts, including saved and liked status if user_id is provided"""
         cursor = self.db.posts.find().sort("created_at", -1).limit(limit)
         posts = await cursor.to_list(length=limit)
         
-        # If user is logged in, fetch their saved posts to populate shelf_category
+        # If user is logged in, fetch their saved and liked posts
         saved_map = {}
+        liked_set = set()
         if user_id:
+            # Fetch saved posts
             saved_cursor = self.db.saved_posts.find({"user_id": user_id})
             saved_docs = await saved_cursor.to_list(length=100)
             saved_map = {doc["post_id"]: doc["shelf_category"] for doc in saved_docs}
+            
+            # Fetch liked posts
+            liked_cursor = self.db.likes.find({"user_id": user_id})
+            liked_docs = await liked_cursor.to_list(length=100)
+            liked_set = {doc["post_id"] for doc in liked_docs}
             
         for post in posts:
             post["_id"] = str(post["_id"])
             if user_id:
                 post["shelf_category"] = saved_map.get(post["id"])
+                post["is_liked"] = post["id"] in liked_set
         return posts
 
     async def get_user_posts(self, user_id: str) -> List[dict]:

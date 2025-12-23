@@ -362,6 +362,22 @@ async def save_post_to_shelf(
             detail=str(e)
         )
 
+@app.post("/api/posts/{post_id}/like", tags=["Posts"])
+async def like_post(
+    post_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: MongoDatabase = Depends(get_database)
+):
+    """Like or unlike a post"""
+    try:
+        post = await db.like_post(user_id, post_id)
+        return post
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
 # MARK: - Posts Endpoints
 @app.post(
     "/api/posts",
