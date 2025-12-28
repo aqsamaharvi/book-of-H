@@ -154,7 +154,7 @@ class MongoDatabase:
         await self.db.posts.delete_many({})
 
     # MARK: - Posts
-    async def create_post(self, user_id: str, content: str, image: Optional[str] = None, category: str = "Discussion") -> dict:
+    async def create_post(self, user_id: str, content: str, image: Optional[str] = None, category: str = "Discussion", title: Optional[str] = None, tags: List[str] = [], post_type: str = "regular") -> dict:
         """Create a new post"""
         user = await self.get_user_by_id(user_id)
         if not user:
@@ -169,6 +169,9 @@ class MongoDatabase:
             "content": content,
             "image": image,
             "category": category,
+            "title": title,
+            "tags": tags,
+            "post_type": post_type,
             "likes": 0,
             "comments": 0,
             "created_at": datetime.utcnow().isoformat()
@@ -210,9 +213,25 @@ class MongoDatabase:
             return post
         raise Exception("Post not found")
 
-    async def get_posts(self, limit: int = 20, user_id: Optional[str] = None) -> List[dict]:
+    async def get_posts(self, limit: int = 20, user_id: Optional[str] = None, post_type: str = "regular") -> List[dict]:
         """Get latest posts, including saved, liked status and recent comments"""
-        cursor = self.db.posts.find().sort("created_at", -1).limit(limit)
+        if post_type == "regular":
+            # Include posts with "regular" type OR missing type (legacy posts)
+            query = {
+                "$or": [
+                    {"post_type": "regular"},
+                    {"post_type": {"$exists": False}},
+                    {"post_type": None}
+                ]
+            }
+        elif post_type == "community":
+            query = {"post_type": "community"}
+        elif post_type != "all":
+            query = {"post_type": post_type}
+        else:
+            query = {}
+            
+        cursor = self.db.posts.find(query).sort("created_at", -1).limit(limit)
         posts = await cursor.to_list(length=limit)
         
         # If user is logged in, fetch their saved and liked posts

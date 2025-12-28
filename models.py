@@ -90,6 +90,9 @@ class PostCreateRequest(BaseModel):
     content: str
     image: Optional[str] = None
     category: Optional[str] = "Discussion"
+    title: Optional[str] = None
+    tags: List[str] = []
+    post_type: str = "regular"  # "regular" or "community"
 
 
 class CommentResponse(BaseModel):
@@ -111,6 +114,9 @@ class PostResponse(BaseModel):
     content: str
     image: Optional[str] = None
     category: str
+    title: Optional[str] = None
+    tags: List[str] = []
+    post_type: str = "regular"
     likes: int = 0
     comments: int = 0
     created_at: str

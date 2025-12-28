@@ -451,7 +451,10 @@ async def create_post(
             user_id=user_id,
             content=post_data.content,
             image=post_data.image,
-            category=post_data.category
+            category=post_data.category,
+            title=post_data.title,
+            tags=post_data.tags,
+            post_type=post_data.post_type
         )
         return post
     except Exception as e:
@@ -466,11 +469,12 @@ async def create_post(
     tags=["Posts"]
 )
 async def get_all_posts(
+    type: str = "regular",
     user_id: Optional[str] = Depends(get_optional_user_id),
     db: MongoDatabase = Depends(get_database)
 ):
     """Get all posts for the feed, with saved status if logged in"""
-    posts = await db.get_posts(user_id=user_id)
+    posts = await db.get_posts(user_id=user_id, post_type=type)
     return posts
 
 @app.get("/api/user/posts", tags=["User"])
