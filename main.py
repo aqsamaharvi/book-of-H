@@ -178,6 +178,8 @@ async def login(
 
 
 from scoring_config import calculate_score
+import traceback
+from fastapi import Request
 
 @app.post(
     "/api/questionnaire/submit",
@@ -192,7 +194,8 @@ from scoring_config import calculate_score
 )
 async def submit_questionnaire(
     questionnaire_data: QuestionnaireRequest,
-    db: MongoDatabase = Depends(get_database)
+    db: MongoDatabase = Depends(get_database),
+    request: Request = None
 ):
     """
     Submit or update questionnaire responses for a user
@@ -241,6 +244,15 @@ async def submit_questionnaire(
     except HTTPException:
         raise
     except Exception as e:
+        # Log full traceback and request body to help debugging
+        try:
+            body = await request.body()
+            print("--- Questionnaire submit failed. Request body:")
+            print(body.decode('utf-8', errors='replace'))
+        except Exception:
+            print("--- Could not read request body")
+        print("--- Exception traceback:")
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred while saving the questionnaire: {str(e)}"

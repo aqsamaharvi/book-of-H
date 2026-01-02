@@ -1,0 +1,44 @@
+INFO:     Will watch for changes in these directories: ['/Users/hf/Documents/hGram-community-app/book-of-H']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [77241] using WatchFiles
+INFO:     Started server process [77313]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+✅ Connected to MongoDB database: hgram_db
+INFO:     127.0.0.1:59290 - "POST /api/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:59293 - "POST /api/questionnaire/submit HTTP/1.1" 201 Created
+INFO:     127.0.0.1:59303 - "POST /api/questionnaire/submit HTTP/1.1" 201 Created
+WARNING:  WatchFiles detected changes in 'scoring_config.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [77313]
+Disconnected from MongoDB
+INFO:     Started server process [79328]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'scoring_config.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [79328]
+✅ Connected to MongoDB database: hgram_db
+Disconnected from MongoDB
+INFO:     Started server process [79353]
+INFO:     Waiting for application startup.
+WARNING:  WatchFiles detected changes in 'scoring_config.py'. Reloading...
+INFO:     Application startup complete.
+ERROR:    Traceback (most recent call last):
+  File "/Users/hf/Library/Python/3.9/lib/python/site-packages/starlette/routing.py", line 747, in lifespan
+    await receive()
+  File "/Users/hf/Library/Python/3.9/lib/python/site-packages/uvicorn/lifespan/on.py", line 137, in receive
+    return await self.receive_queue.get()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/asyncio/queues.py", line 166, in get
+    await getter
+asyncio.exceptions.CancelledError
+
+✅ Connected to MongoDB database: hgram_db
+Disconnected from MongoDB
+INFO:     Started server process [79371]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
