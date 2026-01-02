@@ -31,7 +31,8 @@ SCORING_CONFIG = {
         "q_sa_tenure": {
             "category": "sa_loyalty",
             "points": {
-                "lt_6m": 0,
+                "no_dedicated_sa": 0,
+                "lt_6m": 5,
                 "6_24m": 10,
                 "gt_2y": 15,
             },
