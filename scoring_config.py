@@ -50,10 +50,13 @@ SCORING_CONFIG = {
         "q_purchase_mix": {
             "category": "purchase_mix",
             "points": {
-                "mostly_accessories": 5,
-                "leather_and_accessories": 10,
-                "leather_and_rtw_shoes": 15,
-                "leather_rtw_jewelry_home": 20,
+                "no_purchases": 0,
+                "home": 2,
+                "outdoor_equestrian": 3,
+                "fine_jewellery_watches": 5,
+                "jewellery": 5,
+                "makeup": 3,
+                "fragrances": 2,
             },
             "max_points": 20
         },
@@ -126,9 +129,6 @@ def calculate_score(answers):
         selected = answer.get("selected_options", [])
         if not selected:
             continue
-            
-        # For single select, we take the first option
-        opt = selected[0]
 
         # Helper: map display text or incoming code to canonical code used in scoring
         def map_option_to_code(qconf, text):
@@ -237,9 +237,11 @@ def calculate_score(answers):
             # As last resort return the text unchanged (will map to 0 by default)
             return text
 
-        code = map_option_to_code(q_config, opt)
-        points = q_config["points"].get(code, 0)
-        category_scores[cat] += points
+        # Process all selected options (for multi-select questions, sum all points)
+        for opt in selected:
+            code = map_option_to_code(q_config, opt)
+            points = q_config["points"].get(code, 0)
+            category_scores[cat] += points
     
     total_score = 0
     category_contributions = {}
