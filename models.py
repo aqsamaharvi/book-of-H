@@ -148,7 +148,7 @@ class QuestionnaireResponse(BaseModel):
     questionnaire_id: str
     score: Optional[int] = None
     band: Optional[str] = None
-    category_scores: Optional[Dict[str, int]] = None
+    category_scores: Optional[Dict[str, float]] = None
 
 
 class QuestionnaireDataResponse(BaseModel):

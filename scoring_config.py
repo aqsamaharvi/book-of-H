@@ -61,10 +61,10 @@ SCORING_CONFIG = {
             "category": "visit_engagement",
             "points": {
                 "have_not_visited": 0,
-                "1_2_per_year": 5,
-                "a_few_per_year": 10,
-                "monthly": 15,
-                "weekly_plus": 20,
+                "1_2_per_year": 0,
+                "a_few_per_year": 5,
+                "monthly": 10,
+                "weekly_plus": 15,
             },
             "max_points": 15
         },
@@ -79,9 +79,11 @@ SCORING_CONFIG = {
         "q_store_vibe": {
             "category": "behavior",
             "points": {
-                "direct_transactional": 0,
-                "friendly_chatty": 5,
-                "patient_engaged": 10,
+                "star_1": 2,
+                "star_2": 4,
+                "star_3": 6,
+                "star_4": 8,
+                "star_5": 10,
             },
             "max_points": 10
         },
@@ -169,15 +171,11 @@ def calculate_score(answers):
                 "A few times per year": "a_few_per_year",
                 "Monthly": "monthly",
                 "Weekly or more": "weekly_plus",
+                "Haven't visited the boutique yet": "have_not_visited",
 
                 # yes/no fields (explicit contexts)
                 "Yes": "YES_PLACEHOLDER",
                 "No": "NO_PLACEHOLDER",
-
-                # store vibe
-                "Direct & transactional": "direct_transactional",
-                "Friendly & chatty": "friendly_chatty",
-                "Patient & engaged": "patient_engaged",
 
                 # cancellations/tester
                 "Do you ask about cancellations/walk-in availability when visiting?": "ask_cancellations_yes",
@@ -242,7 +240,7 @@ def calculate_score(answers):
         code = map_option_to_code(q_config, opt)
         points = q_config["points"].get(code, 0)
         category_scores[cat] += points
-
+    
     total_score = 0
     category_contributions = {}
     for cat, weight_info in SCORING_CONFIG["categories"].items():
