@@ -60,10 +60,11 @@ SCORING_CONFIG = {
         "q_visit_frequency": {
             "category": "visit_engagement",
             "points": {
-                "1_2_per_year": 0,
-                "a_few_per_year": 5,
-                "monthly": 10,
-                "weekly_plus": 15,
+                "have_not_visited": 0,
+                "1_2_per_year": 5,
+                "a_few_per_year": 10,
+                "monthly": 15,
+                "weekly_plus": 20,
             },
             "max_points": 15
         },
@@ -72,14 +73,6 @@ SCORING_CONFIG = {
             "points": {
                 "wishlist_yes": 5,
                 "wishlist_no": 0,
-            },
-            "max_points": 5
-        },
-        "q_tester_bag": {
-            "category": "visit_engagement",
-            "points": {
-                "tester_yes": 5,
-                "tester_no": 0,
             },
             "max_points": 5
         },
