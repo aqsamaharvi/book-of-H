@@ -10,9 +10,9 @@ SCORING_CONFIG = {
     "categories": {
         "spend_12mo": {"label": "Total Spend (12 months)", "weight": 30},
         "sa_loyalty": {"label": "Sales Associate Loyalty", "weight": 20},
-        "purchase_mix": {"label": "Purchase Mix", "weight": 20},
-        "visit_engagement": {"label": "Visit & Engagement", "weight": 15},
-        "behavior": {"label": "Behavior & Demeanor", "weight": 15},
+        "purchase_mix": {"label": "Purchase Mix", "weight": 15},
+        "visit_engagement": {"label": "Visit & Engagement", "weight": 25},
+        "behavior": {"label": "Behavior & Demeanor", "weight": 10},
     },
     "questions": {
         "q_spend_12mo": {
@@ -53,23 +53,23 @@ SCORING_CONFIG = {
                 "no_purchases": 0,
                 "home": 2,
                 "outdoor_equestrian": 3,
-                "fine_jewellery_watches": 5,
-                "jewellery": 5,
-                "makeup": 3,
+                "fine_jewellery_watches": 3,
+                "jewellery": 3,
+                "makeup": 2,
                 "fragrances": 2,
             },
-            "max_points": 20
+            "max_points": 15
         },
         "q_visit_frequency": {
             "category": "visit_engagement",
             "points": {
                 "have_not_visited": 0,
-                "1_2_per_year": 0,
-                "a_few_per_year": 5,
-                "monthly": 10,
-                "weekly_plus": 15,
+                "1_2_per_year": 5,
+                "a_few_per_year": 10,
+                "monthly": 15,
+                "weekly_plus": 20,
             },
-            "max_points": 15
+            "max_points": 20
         },
         "q_wishlist_active": {
             "category": "visit_engagement",
@@ -90,13 +90,69 @@ SCORING_CONFIG = {
             },
             "max_points": 10
         },
-        "q_cancellations": {
+        "q_favorite_brands": {
             "category": "behavior",
-            "points": {
-                "ask_cancellations_yes": 5,
-                "ask_cancellations_no": 0,
+            "type": "multi_select",
+            "ui": {
+                "component": "searchable_dropdown",
+                "native": True,
+                "multi": True,
+                "placeholder": "Select brands"
             },
-            "max_points": 5
+            "options": [
+                "CHANEL",
+                "DELVAUX",
+                "LOUIS VUITTON",
+                "GOYARD",
+                "MOYNAT",
+                "LANA MARKS",
+                "DIOR",
+                "BOTTEGA VENETA",
+                "FENDI",
+                "GUCCI",
+                "PRADA",
+                "LOEWE",
+                "BURBERRY",
+                "TOM FORD",
+                "GIVENCHY",
+                "SAINT LAURENT",
+                "VALENTINO",
+                "CELINE",
+                "ALEXANDER",
+                "VERSACE",
+                "ALAIA",
+                "BALENCIAGA",
+                "CHLOE",
+                "DOLCE & GABBANA",
+                "THE ROW",
+                "VICTORIA BECKHAM",
+                "GABRIELA HEARST",
+                "MICHAEL KORS",
+                "TORY BURCH",
+                "KATE SPADE",
+                "COACH",
+                "MARC JACOBS",
+                "LONGCHAMP FURLA",
+                "BRAHMIN",
+                "KURT GEIGER",
+                "TED BAKER",
+                "REBECCA MINKOFF",
+                "CALVIN KLEIN",
+                "GUESS",
+                "TOMMY HILFIGER",
+                "NINE WEST",
+                "H&M",
+                "RIVER ISLAND",
+                "ZARA",
+                "NIKE",
+                "CHARLES & KEITH",
+                "MANGO",
+                "ALDO",
+                "STEVE MADDEN"
+            ],
+            # This question is informational only and does not contribute to scoring
+            "points": {},
+            "max_points": 0
         },
     }
 }
@@ -177,8 +233,7 @@ def calculate_score(answers):
                 "Yes": "YES_PLACEHOLDER",
                 "No": "NO_PLACEHOLDER",
 
-                # cancellations/tester
-                "Do you ask about cancellations/walk-in availability when visiting?": "ask_cancellations_yes",
+                # (removed old cancellations question mapping)
             }
 
             if text in LEGACY_TEXT_TO_CODE and LEGACY_TEXT_TO_CODE[text] not in ("YES_PLACEHOLDER", "NO_PLACEHOLDER"):
