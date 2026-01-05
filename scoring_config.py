@@ -148,7 +148,8 @@ SCORING_CONFIG = {
                 "CHARLES & KEITH",
                 "MANGO",
                 "ALDO",
-                "STEVE MADDEN"
+                "STEVE MADDEN",
+                "ADDIDAS"
             ],
             # This question is informational only and does not contribute to scoring
             "points": {},
